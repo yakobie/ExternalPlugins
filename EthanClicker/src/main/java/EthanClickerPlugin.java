@@ -21,10 +21,10 @@ import net.runelite.client.util.HotkeyListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.awt.*;
+import java.awt.event.InputEvent;
+import java.util.Random;
+import java.util.concurrent.*;
 
 @PluginDescriptor(
 	name = "EthanClicker",
@@ -56,9 +56,41 @@ public class EthanClickerPlugin extends Plugin
 	private ThreadPoolExecutor executorService = new ThreadPoolExecutor(1, 1, 25, TimeUnit.SECONDS, queue,
 			new ThreadPoolExecutor.DiscardPolicy());
 
+
+	private void simLeftClick()
+	{
+		try
+		{
+			Robot leftClk = new Robot();
+			leftClk.mousePress(InputEvent.BUTTON1_MASK);
+			leftClk.mouseRelease(InputEvent.BUTTON1_MASK);
+		}
+		catch (AWTException e)
+		{
+			e.printStackTrace();
+		}
+	}
+
+	private static int randomDelay(int min, int max)
+	{
+		Random rand = new Random();
+		int n = rand.nextInt(max) + 1;
+		if (n < min)
+		{
+			n += min;
+		}
+		return n;
+	}
+
+	private void delayFirstClick()
+	{
+		final ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
+		service.schedule(this::simLeftClick, randomDelay(config.randLow(), config.randHigh()), TimeUnit.MILLISECONDS);
+		service.shutdown();
+	}
+
 	private void addSubscriptions()
 	{
-		eventBus.subscribe(GameStateChanged.class, this, this::onGameStateChanged);
 		eventBus.subscribe(GameTick.class, this, this::onGameTick);
 	}
 
@@ -67,11 +99,7 @@ public class EthanClickerPlugin extends Plugin
 	{
 		if(clickTog)
 		{
-			executorService.submit(() ->
-			{
-				flexo.delay(getMillis());
-				flexo.mousePressAndRelease(1);
-			});
+			delayFirstClick();
 		}
 	}
 
@@ -86,7 +114,6 @@ public class EthanClickerPlugin extends Plugin
 		}
 	};
 
-	private boolean loggedIn = false;
 	private boolean clickTog = false;
 
 
@@ -114,15 +141,6 @@ public class EthanClickerPlugin extends Plugin
 	{
 		keyManager.unregisterKeyListener(toggle);
 		flexo = null;
-	}
-
-	@Subscribe
-	public void onGameStateChanged(GameStateChanged gameStateChanged)
-	{
-		if (gameStateChanged.getGameState() == GameState.LOGGED_IN)
-		{
-			loggedIn = true;
-		}
 	}
 
 	@Override
